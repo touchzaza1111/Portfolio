@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Picking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden
+        }
+
+        canvas {
+            display: block
+        }
+
+        /* Style for the button to make it visible and usable */
+        #scene-toggle-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            z-index: 100; /* Ensure it's above the canvas */
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+    <button id="scene-toggle-button">Toggle Scene: Star Sky</button>
+
+    <script>
+        (() => {
+            // --- Scene / Camera / Renderer ---
+            const scene = new THREE.Scene();
+            // 💡 Setting the initial background color (Blue Sky)
+            scene.background = new THREE.Color(0x87CEEB);
+
+            const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+            camera.position.set(5, 5, 5);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(innerWidth, innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0.5, 0);
+            controls.enableDamping = true;
+
+            // --- Ground (เส้นกริดช่วยกะระยะ) ---
+            const grid = new THREE.GridHelper(10, 10, 0x666666, 0x333333);
+            grid.position.y = -0.001;
+            scene.add(grid);
+
+
+
+            /*// --- Objects (3 ชิ้น / สีต่างกัน / ไม่ต้องมีไฟเพราะใช้ MeshBasic) ---
+            const clickable = [];
+
+
+            function addObj(mesh, pos, name) {
+                mesh.position.copy(pos);
+                mesh.name = name;
+                scene.add(mesh);
+                clickable.push(mesh);
+                return mesh;
+            }
+
+
+            addObj(
+                new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshBasicMaterial({ color: 0xff6b6b })),
+                new THREE.Vector3(-2, 0.4, 0),
+                'Box'
+            );
+
+            addObj(
+                new THREE.Mesh(new THREE.SphereGeometry(0.45, 32, 16), new THREE.MeshBasicMaterial({ color: 0x5dff9b })),
+                new THREE.Vector3(0, 0.45, 0),
+                'Sphere'
+            );
+
+            addObj(
+                new THREE.Mesh(new THREE.ConeGeometry(0.5, 1, 24), new THREE.MeshBasicMaterial({ color: 0x5db6ff })),
+                new THREE.Vector3(2, 0.5, 0),
+                'Cone'
+            );*/
+
+
+
+            // --- พรีเซ็ตตำแหน่งกล้องต่อวัตถุ (กำหนดง่าย ๆ) ---
+            const VIEWS = {
+                Box: { pos: new THREE.Vector3(-3, 1.4, 1.6), tar: new THREE.Vector3(-2, 0.4, 0) },
+                Sphere: { pos: new THREE.Vector3(0, 1.8, 3.0), tar: new THREE.Vector3(0, 0.45, 0) },
+                Cone: { pos: new THREE.Vector3(3, 1.6, -2.0), tar: new THREE.Vector3(2, 0.5, 0) },
+            };
+
+            // --- Raycaster + คลิกเพื่อสลับมุม ---
+            const raycaster = new THREE.Raycaster();
+            const pointer = new THREE.Vector2();
+
+            function setPointer(e) {
+                const r = renderer.domElement.getBoundingClientRect();
+                const x = (e.clientX ?? e.touches[0].clientX) - r.left;
+                const y = (e.clientY ?? e.touches[0].clientY) - r.top;
+                pointer.x = (x / r.width) * 2 - 1;
+                pointer.y = -(y / r.height) * 2 + 1;
+            }
+
+            function onPick(e) {
+                setPointer(e);
+                raycaster.setFromCamera(pointer, camera);
+                const hit = raycaster.intersectObjects(clickable, false)[0];
+                if (!hit) return;
+                const view = VIEWS[hit.object.name];
+                if (!view) return;
+
+                // ย้ายแบบทันที (ถ้าอยากนุ่ม ๆ ค่อยเสริม lerp ทีหลัง)
+                camera.position.copy(view.pos);
+                controls.target.copy(view.tar);
+                controls.update();
+            }
+
+            renderer.domElement.addEventListener('click', onPick);
+            renderer.domElement.addEventListener('touchend', (e) => { onPick(e); }, { passive: true });
+
+            // --------------------------------------------------------
+            // 2. ADDED: SCENE TOGGLE LOGIC
+            // --------------------------------------------------------
+
+            let isStarryNight = false; // State variable for the scene
+
+            const blueSkyColor = new THREE.Color(0x87CEEB); // Light Sky Blue
+            const starSkyColor = new THREE.Color(0x0a0a2a); // Deep Space Blue/Black
+
+            const button = document.getElementById('scene-toggle-button');
+
+            function toggleSceneBackground() {
+                isStarryNight = !isStarryNight;
+
+                if (isStarryNight) {
+                    // Set to Star Sky (dark background)
+                    scene.background = starSkyColor;
+                    button.textContent = 'Toggle Scene: Blue Sky';
+                    // Optional: You could add a simple star field (Points) here.
+                } else {
+                    // Set to Blue Sky (light background)
+                    scene.background = blueSkyColor;
+                    button.textContent = 'Toggle Scene: Star Sky';
+                }
+            }
+
+            // 3. ADDED: Event listener for the button
+            button.addEventListener('click', toggleSceneBackground);
+
+            // --------------------------------------------------------
+
+
+            // --- Resize ---
+            addEventListener('resize', () => {
+                camera.aspect = innerWidth / innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
+            });
+
+            function lerp(a, b, t) {
+                return a + (b - a) * t;  // t ใน [0..1]
+            }
+
+            // --- Loop ---
+            function loop() {
+                controls.update();
+                renderer.render(scene, camera);
+                requestAnimationFrame(loop);
+            }
+            loop();
+
+        })();
+    </script>
+</body>
+
+</html>
