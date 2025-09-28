@@ -30,6 +30,7 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 </head>
 
 <body>
@@ -58,7 +59,28 @@
             grid.position.y = -0.001;
             scene.add(grid);
 
-
+            const loader = new THREE.OBJLoader();
+            loader.load('https://touchzaza1111.github.io/Portfolio/room.obj', function (object) {
+                object.castShadow = true; // ✅ วัตถุนี้สร้างเงา
+                // ตั้งค่า castShadow กับทุก mesh ใน object
+                object.traverse(function (child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        child.material = new THREE.MeshStandardMaterial({
+                            // เพื่อให้แสดงสีที่ถูกต้องจาก texture
+                            map: texwood,
+                            roughness: 7, // ค่า roughness ของไม้
+                            metalness: 0
+                        });
+                    }
+                });
+                object.scale.set(0.1, 0.1, 0.1); // ✅ ลดขนาดของโมเดล
+                object.position.set(0, -23, 0);
+                scene.add(object);
+            }, undefined, function (error) {
+                console.error('Error loading OBJ:', error);
+            });
 
             /*// --- Objects (3 ชิ้น / สีต่างกัน / ไม่ต้องมีไฟเพราะใช้ MeshBasic) ---
             const clickable = [];
@@ -89,7 +111,7 @@
                 new THREE.Mesh(new THREE.ConeGeometry(0.5, 1, 24), new THREE.MeshBasicMaterial({ color: 0x5db6ff })),
                 new THREE.Vector3(2, 0.5, 0),
                 'Cone'
-            );*/
+            );
 
 
 
@@ -103,7 +125,7 @@
             // --- Raycaster + คลิกเพื่อสลับมุม ---
             const raycaster = new THREE.Raycaster();
             const pointer = new THREE.Vector2();
-
+            
             function setPointer(e) {
                 const r = renderer.domElement.getBoundingClientRect();
                 const x = (e.clientX ?? e.touches[0].clientX) - r.left;
@@ -128,6 +150,7 @@
 
             renderer.domElement.addEventListener('click', onPick);
             renderer.domElement.addEventListener('touchend', (e) => { onPick(e); }, { passive: true });
+            */
 
             // --------------------------------------------------------
             // 2. ADDED: SCENE TOGGLE LOGIC
